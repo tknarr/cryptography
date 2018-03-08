@@ -36,11 +36,17 @@ static const int BIO_CTRL_INFO;
 static const int BIO_CTRL_GET;
 static const int BIO_CTRL_PENDING;
 static const int BIO_CTRL_WPENDING;
+static const int BIO_CTRL_DGRAM_SET_CONNECTED;
+static const int BIO_CTRL_DGRAM_SET_RECV_TIMEOUT;
+static const int BIO_CTRL_DGRAM_GET_RECV_TIMEOUT;
+static const int BIO_CTRL_DGRAM_SET_SEND_TIMEOUT;
+static const int BIO_CTRL_DGRAM_GET_SEND_TIMEOUT;
+static const int BIO_CTRL_DGRAM_GET_RECV_TIMER_EXP;
+static const int BIO_CTRL_DGRAM_GET_SEND_TIMER_EXP;
 static const int BIO_C_FILE_SEEK;
 static const int BIO_C_FILE_TELL;
 static const int BIO_TYPE_NONE;
 static const int BIO_TYPE_NBIO_TEST;
-static const int BIO_TYPE_BER;
 static const int BIO_TYPE_BIO;
 static const int BIO_TYPE_DESCRIPTOR;
 static const int BIO_FLAGS_READ;
@@ -69,6 +75,7 @@ BIO *BIO_new_file(const char *, const char *);
 BIO *BIO_new_fp(FILE *, int);
 BIO *BIO_new_fd(int, int);
 BIO *BIO_new_socket(int, int);
+BIO *BIO_new_dgram(int, int);
 long BIO_ctrl(BIO *, int, long, void *);
 long BIO_callback_ctrl(
     BIO *,
@@ -82,22 +89,23 @@ int BIO_read(BIO *, void *, int);
 int BIO_gets(BIO *, char *, int);
 int BIO_write(BIO *, const void *, int);
 int BIO_puts(BIO *, const char *);
-"""
+int BIO_method_type(const BIO *);
+/* Added in 1.1.0 */
+int BIO_up_ref(BIO *);
 
-MACROS = """
 /* These added const to BIO_METHOD in 1.1.0 */
 BIO *BIO_new(BIO_METHOD *);
-int BIO_set(BIO *, BIO_METHOD *);
 BIO_METHOD *BIO_s_mem(void);
 BIO_METHOD *BIO_s_file(void);
 BIO_METHOD *BIO_s_fd(void);
 BIO_METHOD *BIO_s_socket(void);
+BIO_METHOD *BIO_s_datagram(void);
 BIO_METHOD *BIO_s_null(void);
 BIO_METHOD *BIO_f_null(void);
 BIO_METHOD *BIO_f_buffer(void);
 /* BIO_new_mem_buf became const void * in 1.0.2g */
 BIO *BIO_new_mem_buf(void *, int);
-long BIO_set_fd(BIO *, long, int);
+long BIO_set_fd(BIO *, int, long);
 long BIO_get_fd(BIO *, char *);
 long BIO_set_mem_eof_return(BIO *, int);
 long BIO_get_mem_data(BIO *, char **);
@@ -131,11 +139,15 @@ long BIO_set_write_buffer_size(BIO *, long);
 long BIO_set_buffer_size(BIO *, long);
 long BIO_set_buffer_read_data(BIO *, void *, long);
 long BIO_set_nbio(BIO *, long);
-
-/* The following was a macro in 0.9.8e. Once we drop support for RHEL/CentOS 5
-   we should move this back to FUNCTIONS. */
-int BIO_method_type(const BIO *);
+void BIO_set_retry_read(BIO *);
+void BIO_clear_retry_flags(BIO *);
 """
 
 CUSTOMIZATIONS = """
+#if CRYPTOGRAPHY_OPENSSL_LESS_THAN_110PRE4
+int BIO_up_ref(BIO *b) {
+    CRYPTO_add(&b->references, 1, CRYPTO_LOCK_BIO);
+    return 1;
+}
+#endif
 """

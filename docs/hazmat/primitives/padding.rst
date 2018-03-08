@@ -1,7 +1,7 @@
 .. hazmat::
 
-Padding
-=======
+Symmetric Padding
+=================
 
 .. module:: cryptography.hazmat.primitives.padding
 
@@ -36,22 +36,22 @@ multiple of the block size.
         >>> data + unpadder.finalize()
         '11111111111111112222222222'
 
-    :param block_size: The size of the block in bits that the data is being
-                       padded to.
+    :param block_size: The size of the block in :term:`bits` that the data is
+        being padded to.
     :raises ValueError: Raised if block size is not a multiple of 8 or is not
-        between 0 and 256.
+        between 0 and 2040 inclusive.
 
     .. method:: padder()
 
         :returns: A padding
             :class:`~cryptography.hazmat.primitives.padding.PaddingContext`
-            provider.
+            instance.
 
     .. method:: unpadder()
 
         :returns: An unpadding
             :class:`~cryptography.hazmat.primitives.padding.PaddingContext`
-            provider.
+            instance.
 
 
 .. class:: ANSIX923(block_size)
@@ -79,22 +79,22 @@ multiple of the block size.
         >>> data + unpadder.finalize()
         '11111111111111112222222222'
 
-    :param block_size: The size of the block in bits that the data is being
-        padded to.
+    :param block_size: The size of the block in :term:`bits` that the data is
+        being padded to.
     :raises ValueError: Raised if block size is not a multiple of 8 or is not
-        between 0 and 256.
+        between 0 and 2040 inclusive.
 
     .. method:: padder()
 
         :returns: A padding
             :class:`~cryptography.hazmat.primitives.padding.PaddingContext`
-            provider
+            instance.
 
     .. method:: unpadder()
 
         :returns: An unpadding
             :class:`~cryptography.hazmat.primitives.padding.PaddingContext`
-            provider.
+            instance.
 
 
 .. class:: PaddingContext

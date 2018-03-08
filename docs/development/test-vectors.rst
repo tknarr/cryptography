@@ -35,6 +35,8 @@ Asymmetric ciphers
   * `Botan's ECC private keys`_.
 * `asymmetric/public/PKCS1/dsa.pub.pem`_ is a PKCS1 DSA public key from the
   Ruby test suite.
+* X25519 test vectors from :rfc:`7748`.
+* RSA OAEP with custom label from the `BoringSSL evp tests`_.
 
 
 Custom asymmetric vectors
@@ -44,6 +46,7 @@ Custom asymmetric vectors
     :maxdepth: 1
 
     custom-vectors/secp256k1
+    custom-vectors/rsa-oaep-sha2
 
 * ``asymmetric/PEM_Serialization/ec_private_key.pem`` and
   ``asymmetric/DER_Serialization/ec_private_key.der`` - Contains an Elliptic
@@ -87,8 +90,45 @@ Custom asymmetric vectors
 Key exchange
 ~~~~~~~~~~~~
 
+* ``vectors/cryptography_vectors/asymmetric/DH/rfc3526.txt`` contains
+  several standardized Diffie-Hellman groups from :rfc:`3526`.
+
 * ``vectors/cryptography_vectors/asymmetric/DH/RFC5114.txt`` contains
   Diffie-Hellman examples from appendix A.1, A.2 and A.3 of :rfc:`5114`.
+
+* ``vectors/cryptography_vectors/asymmetric/DH/vec.txt`` contains
+  Diffie-Hellman examples from `botan`_.
+
+* ``vectors/cryptography_vectors/asymmetric/DH/bad_exchange.txt`` contains
+  Diffie-Hellman vector pairs that were generated using OpenSSL
+  ``DH_generate_parameters_ex`` and ``DH_generate_key``.
+
+* ``vectors/cryptography_vectors/asymmetric/DH/dhp.pem``,
+  ``vectors/cryptography_vectors/asymmetric/DH/dhkey.pem`` and
+  ``vectors/cryptography_vectors/asymmetric/DH/dhpub.pem`` contains
+  Diffie-Hellman parameters and key respectively. The keys were
+  generated using OpenSSL following `DHKE`_ guide.
+  ``vectors/cryptography_vectors/asymmetric/DH/dhkey.txt`` contains
+  all parameter in text.
+  ``vectors/cryptography_vectors/asymmetric/DH/dhp.der``,
+  ``vectors/cryptography_vectors/asymmetric/DH/dhkey.der`` and
+  ``vectors/cryptography_vectors/asymmetric/DH/dhpub.der`` contains
+  are the above parameters and keys in DER format.
+
+* ``vectors/cryptography_vectors/asymmetric/DH/dhp_rfc5114_2.pem``,
+  ``vectors/cryptography_vectors/asymmetric/DH/dhkey_rfc5114_2.pem`` and
+  ``vectors/cryptography_vectors/asymmetric/DH/dhpub_rfc5114_2.pem`` contains
+  Diffie-Hellman parameters and key respectively. The keys were
+  generated using OpenSSL following `DHKE`_ guide. When creating the
+  parameters we added the `-pkeyopt dh_rfc5114:2` option to use
+  RFC5114 2048 bit DH parameters with 224 bit subgroup.
+  ``vectors/cryptography_vectors/asymmetric/DH/dhkey_rfc5114_2.txt`` contains
+  all parameter in text.
+  ``vectors/cryptography_vectors/asymmetric/DH/dhp_rfc5114_2.der``,
+  ``vectors/cryptography_vectors/asymmetric/DH/dhkey_rfc5114_2.der`` and
+  ``vectors/cryptography_vectors/asymmetric/DH/dhpub_rfc5114_2.der`` contains
+  are the above parameters and keys in DER format.
+
 
 X.509
 ~~~~~
@@ -116,6 +156,24 @@ X.509
 * ``e-trust.ru.der`` - A certificate from a `Russian CA`_ signed using the GOST
   cipher and containing numerous unusual encodings such as NUMERICSTRING in
   the subject DN.
+* ``alternate-rsa-sha1-oid.pem`` - A certificate from an
+  `unknown signature OID`_ Mozilla bug that uses an alternate signature OID for
+  RSA with SHA1.
+* ``badssl-sct.pem`` - A certificate with the certificate transparency signed
+  certificate timestamp extension.
+* ``bigoid.pem`` - A certificate with a rather long OID in the
+  Certificate Policies extension.  We need to make sure we can parse
+  long OIDs.
+* ``wosign-bc-invalid.pem`` - A certificate issued by WoSign that contains
+  a basic constraints extension with CA set to false and a path length of zero
+  in violation of :rfc:`5280`.
+* ``tls-feature-ocsp-staple.pem`` - A certificate issued by Let's Encrypt that
+  contains a TLS Feature extension with the ``status_request`` feature
+  (commonly known as OCSP Must-Staple).
+* ``unique-identifier.pem`` - A certificate containing
+  a distinguished name with an ``x500UniqueIdentifier``.
+* ``utf8-dnsname.pem`` - A certificate containing non-ASCII characters in the
+  DNS name entries of the SAN extension.
 
 Custom X.509 Vectors
 ~~~~~~~~~~~~~~~~~~~~
@@ -268,6 +326,8 @@ Custom X.509 Vectors
   is an unknown OID (``1.3.6.1.4.1.8432.1.1.2``).
 * ``policy_constraints_explicit.pem`` - A self-signed certificate containing
   a ``policyConstraints`` extension with a ``requireExplicitPolicy`` value.
+* ``freshestcrl.pem`` - A self-signed certificate containing a ``freshestCRL``
+  extension.
 
 Custom X.509 Request Vectors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -322,6 +382,18 @@ Custom X.509 Certificate Revocation List Vectors
 * ``crl_ian_aia_aki.pem`` - Contains a CRL with ``IssuerAlternativeName``,
   ``AuthorityInformationAccess``, ``AuthorityKeyIdentifier`` and ``CRLNumber``
   extensions.
+* ``valid_signature.pem`` - Contains a CRL with the public key which was used
+  to generate it.
+* ``invalid_signature.pem`` - Contains a CRL with the last signature byte
+  incremented by 1 to produce an invalid signature, and the public key which
+  was used to generate it.
+* ``crl_delta_crl_indicator.pem`` - Contains a CRL with the
+  ``DeltaCRLIndicator`` extension.
+
+Custom X.509 OCSP Test Vectors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* ``x509/ocsp/req-sha1.der`` - An OCSP request containing a single request and
+  using SHA1 as the hash algorithm.
 
 Hashes
 ~~~~~~
@@ -330,7 +402,6 @@ Hashes
 * RIPEMD160 from the `RIPEMD website`_.
 * SHA1 from `NIST CAVP`_.
 * SHA2 (224, 256, 384, 512) from `NIST CAVP`_.
-* Whirlpool from the `Whirlpool website`_.
 * Blake2s and Blake2b from OpenSSL `test/evptests.txt`_.
 
 HMAC
@@ -364,7 +435,7 @@ Recipes
 Symmetric ciphers
 ~~~~~~~~~~~~~~~~~
 
-* AES (CBC, CFB, ECB, GCM, OFB) from `NIST CAVP`_.
+* AES (CBC, CFB, ECB, GCM, OFB, CCM) from `NIST CAVP`_.
 * AES CTR from :rfc:`3686`.
 * 3DES (CBC, CFB, ECB, OFB) from `NIST CAVP`_.
 * ARC4 (KEY-LENGTH: 40, 56, 64, 80, 128, 192, 256) from :rfc:`6229`.
@@ -376,6 +447,9 @@ Symmetric ciphers
 * CAST5 (ECB) from :rfc:`2144`.
 * CAST5 (CBC, CFB, OFB) generated by this project.
   See: :doc:`/development/custom-vectors/cast5`
+* ChaCha20 from :rfc:`7539`.
+* ChaCha20Poly1305 from :rfc:`7539`, `OpenSSL's evpciph.txt`_, and the
+  `BoringSSL ChaCha20Poly1305 tests`_.
 * IDEA (ECB) from the `NESSIE IDEA vectors`_ created by `NESSIE`_.
 * IDEA (CBC, CFB, OFB) generated by this project.
   See: :doc:`/development/custom-vectors/idea`
@@ -402,8 +476,8 @@ Creating test vectors
 When official vectors are unavailable ``cryptography`` may choose to build
 its own using existing vectors as source material.
 
-Custom Symmetric Vectors
-~~~~~~~~~~~~~~~~~~~~~~~~
+Created Vectors
+~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -412,6 +486,8 @@ Custom Symmetric Vectors
     custom-vectors/cast5
     custom-vectors/idea
     custom-vectors/seed
+    custom-vectors/hkdf
+
 
 If official test vectors appear in the future the custom generated vectors
 should be discarded.
@@ -426,15 +502,17 @@ header format (substituting the correct information):
     # Verified against the CommonCrypto and Go crypto packages
     # Key Length : 128
 
-.. _`NIST`: http://www.nist.gov/
+.. _`NIST`: https://www.nist.gov/
 .. _`IETF`: https://www.ietf.org/
-.. _`NIST CAVP`: http://csrc.nist.gov/groups/STM/cavp/
+.. _`NIST CAVP`: https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
 .. _`Bruce Schneier's vectors`: https://www.schneier.com/code/vectors.txt
 .. _`Camellia page`: https://info.isl.ntt.co.jp/crypt/eng/camellia/
 .. _`CRYPTREC`: https://www.cryptrec.go.jp
 .. _`OpenSSL's test vectors`: https://github.com/openssl/openssl/blob/97cf1f6c2854a3a955fd7dd3a1f113deba00c9ef/crypto/evp/evptests.txt#L232
-.. _`RIPEMD website`: http://homes.esat.kuleuven.be/~bosselae/ripemd160.html
-.. _`Whirlpool website`: http://www.larc.usp.br/~pbarreto/WhirlpoolPage.html
+.. _`OpenSSL's evpciph.txt`: https://github.com/openssl/openssl/blob/5a7bc0be97dee9ac715897fe8180a08e211bc6ea/test/evpciph.txt#L2362
+.. _`BoringSSL ChaCha20Poly1305 tests`: https://boringssl.googlesource.com/boringssl/+/2e2a226ac9201ac411a84b5e79ac3a7333d8e1c9/crypto/cipher_extra/test/chacha20_poly1305_tests.txt
+.. _`BoringSSL evp tests`: https://boringssl.googlesource.com/boringssl/+/ce3773f9fe25c3b54390bc51d72572f251c7d7e6/crypto/evp/evp_tests.txt
+.. _`RIPEMD website`: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
 .. _`draft RFC`: https://tools.ietf.org/html/draft-josefsson-scrypt-kdf-01
 .. _`Specification repository`: https://github.com/fernet/spec
 .. _`errata`: https://www.rfc-editor.org/errata_search.php?rfc=6238
@@ -448,9 +526,9 @@ header format (substituting the correct information):
 .. _`GnuTLS example keys`: https://gitlab.com/gnutls/gnutls/commit/ad2061deafdd7db78fd405f9d143b0a7c579da7b
 .. _`NESSIE IDEA vectors`: https://www.cosic.esat.kuleuven.be/nessie/testvectors/bc/idea/Idea-128-64.verified.test-vectors
 .. _`NESSIE`: https://en.wikipedia.org/wiki/NESSIE
-.. _`Ed25519 website`: http://ed25519.cr.yp.to/software.html
-.. _`NIST SP-800-38B`: http://csrc.nist.gov/publications/nistpubs/800-38B/Updated_CMAC_Examples.pdf
-.. _`NIST PKI Testing`: http://csrc.nist.gov/groups/ST/crypto_apps_infra/pki/pkitesting.html
+.. _`Ed25519 website`: https://ed25519.cr.yp.to/software.html
+.. _`NIST SP-800-38B`: https://csrc.nist.gov/publications/detail/sp/800-38b/archive/2005-05-01
+.. _`NIST PKI Testing`: https://csrc.nist.gov/Projects/PKI-Testing
 .. _`testx509.pem`: https://github.com/openssl/openssl/blob/master/test/testx509.pem
 .. _`DigiCert Global Root G3`: http://cacerts.digicert.com/DigiCertGlobalRootG3.crt
 .. _`root data`: https://hg.mozilla.org/projects/nss/file/25b2922cc564/security/nss/lib/ckfw/builtins/certdata.txt#l2053
@@ -458,3 +536,6 @@ header format (substituting the correct information):
 .. _`Mozilla bug`: https://bugzilla.mozilla.org/show_bug.cgi?id=233586
 .. _`Russian CA`: https://e-trust.gosuslugi.ru/MainCA
 .. _`test/evptests.txt`: https://github.com/openssl/openssl/blob/2d0b44126763f989a4cbffbffe9d0c7518158bb7/test/evptests.txt
+.. _`unknown signature OID`: https://bugzilla.mozilla.org/show_bug.cgi?id=405966
+.. _`botan`: https://github.com/randombit/botan/blob/57789bdfc55061002b2727d0b32587612829a37c/src/tests/data/pubkey/dh.vec
+.. _`DHKE`: https://sandilands.info/sgordon/diffie-hellman-secret-key-exchange-with-openssl

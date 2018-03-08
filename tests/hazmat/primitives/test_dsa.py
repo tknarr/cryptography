@@ -16,9 +16,9 @@ from cryptography.hazmat.backends.interfaces import (
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import dsa
 from cryptography.hazmat.primitives.asymmetric.utils import (
-    encode_dss_signature
+    Prehashed, encode_dss_signature
 )
-from cryptography.utils import bit_length
+from cryptography.utils import CryptographyDeprecationWarning
 
 from .fixtures_dsa import (
     DSA_KEY_1024, DSA_KEY_2048, DSA_KEY_3072
@@ -82,7 +82,7 @@ class TestDSA(object):
         assert skey_parameters.p == vector['p']
         assert skey_parameters.q == vector['q']
         assert skey_parameters.g == vector['g']
-        assert skey.key_size == bit_length(vector['p'])
+        assert skey.key_size == vector['p'].bit_length()
         assert pkey.key_size == skey.key_size
         public_numbers = pkey.public_numbers()
         assert numbers.public_numbers.y == public_numbers.y
@@ -575,7 +575,9 @@ class TestDSAVerification(object):
             y=vector['y']
         ).public_key(backend)
         sig = encode_dss_signature(vector['r'], vector['s'])
-        verifier = public_key.verifier(sig, algorithm())
+        with pytest.warns(CryptographyDeprecationWarning):
+            verifier = public_key.verifier(sig, algorithm())
+
         verifier.update(vector['msg'])
         if vector['result'] == "F":
             with pytest.raises(InvalidSignature):
@@ -605,6 +607,50 @@ class TestDSAVerification(object):
             verifier.verify()
         with pytest.raises(AlreadyFinalized):
             verifier.update(b"more data")
+
+    def test_verify(self, backend):
+        message = b"one little message"
+        algorithm = hashes.SHA1()
+        private_key = DSA_KEY_1024.private_key(backend)
+        signer = private_key.signer(algorithm)
+        signer.update(message)
+        signature = signer.finalize()
+        public_key = private_key.public_key()
+        public_key.verify(signature, message, algorithm)
+
+    def test_prehashed_verify(self, backend):
+        private_key = DSA_KEY_1024.private_key(backend)
+        message = b"one little message"
+        h = hashes.Hash(hashes.SHA1(), backend)
+        h.update(message)
+        digest = h.finalize()
+        prehashed_alg = Prehashed(hashes.SHA1())
+        signature = private_key.sign(message, hashes.SHA1())
+        public_key = private_key.public_key()
+        public_key.verify(signature, digest, prehashed_alg)
+
+    def test_prehashed_digest_mismatch(self, backend):
+        private_key = DSA_KEY_1024.private_key(backend)
+        public_key = private_key.public_key()
+        message = b"one little message"
+        h = hashes.Hash(hashes.SHA1(), backend)
+        h.update(message)
+        digest = h.finalize()
+        prehashed_alg = Prehashed(hashes.SHA224())
+        with pytest.raises(ValueError):
+            public_key.verify(b"\x00" * 128, digest, prehashed_alg)
+
+    def test_prehashed_unsupported_in_signer_ctx(self, backend):
+        private_key = DSA_KEY_1024.private_key(backend)
+        with pytest.raises(TypeError):
+            private_key.signer(Prehashed(hashes.SHA1()))
+
+    def test_prehashed_unsupported_in_verifier_ctx(self, backend):
+        public_key = DSA_KEY_1024.private_key(backend).public_key()
+        with pytest.raises(TypeError):
+            public_key.verifier(
+                b"0" * 64, Prehashed(hashes.SHA1())
+            )
 
 
 @pytest.mark.requires_backend_interface(interface=DSABackend)
@@ -641,15 +687,10 @@ class TestDSASignature(object):
             ),
             x=vector['x']
         ).private_key(backend)
-        signer = private_key.signer(algorithm())
-        signer.update(vector['msg'])
-        signature = signer.finalize()
+        signature = private_key.sign(vector['msg'], algorithm())
         assert signature
 
-        public_key = private_key.public_key()
-        verifier = public_key.verifier(signature, algorithm())
-        verifier.update(vector['msg'])
-        verifier.verify()
+        private_key.public_key().verify(signature, vector['msg'], algorithm())
 
     def test_use_after_finalize(self, backend):
         private_key = DSA_KEY_1024.private_key(backend)
@@ -660,6 +701,39 @@ class TestDSASignature(object):
             signer.finalize()
         with pytest.raises(AlreadyFinalized):
             signer.update(b"more data")
+
+    def test_sign(self, backend):
+        private_key = DSA_KEY_1024.private_key(backend)
+        message = b"one little message"
+        algorithm = hashes.SHA1()
+        signature = private_key.sign(message, algorithm)
+        public_key = private_key.public_key()
+        verifier = public_key.verifier(signature, algorithm)
+        verifier.update(message)
+        verifier.verify()
+
+    def test_prehashed_sign(self, backend):
+        private_key = DSA_KEY_1024.private_key(backend)
+        message = b"one little message"
+        h = hashes.Hash(hashes.SHA1(), backend)
+        h.update(message)
+        digest = h.finalize()
+        prehashed_alg = Prehashed(hashes.SHA1())
+        signature = private_key.sign(digest, prehashed_alg)
+        public_key = private_key.public_key()
+        verifier = public_key.verifier(signature, hashes.SHA1())
+        verifier.update(message)
+        verifier.verify()
+
+    def test_prehashed_digest_mismatch(self, backend):
+        private_key = DSA_KEY_1024.private_key(backend)
+        message = b"one little message"
+        h = hashes.Hash(hashes.SHA1(), backend)
+        h.update(message)
+        digest = h.finalize()
+        prehashed_alg = Prehashed(hashes.SHA224())
+        with pytest.raises(ValueError):
+            private_key.sign(digest, prehashed_alg)
 
 
 class TestDSANumbers(object):
@@ -720,6 +794,21 @@ class TestDSANumbers(object):
 
         with pytest.raises(TypeError):
             dsa.DSAPrivateNumbers(x=None, public_numbers=public_numbers)
+
+    def test_repr(self):
+        parameter_numbers = dsa.DSAParameterNumbers(p=1, q=2, g=3)
+        assert (
+            repr(parameter_numbers) == "<DSAParameterNumbers(p=1, q=2, g=3)>"
+        )
+
+        public_numbers = dsa.DSAPublicNumbers(
+            y=4,
+            parameter_numbers=parameter_numbers
+        )
+        assert repr(public_numbers) == (
+            "<DSAPublicNumbers(y=4, parameter_numbers=<DSAParameterNumbers(p=1"
+            ", q=2, g=3)>)>"
+        )
 
 
 class TestDSANumberEquality(object):
@@ -1017,6 +1106,29 @@ class TestDSAPEMPublicKeySerialization(object):
             encoding, serialization.PublicFormat.SubjectPublicKeyInfo,
         )
         assert serialized == key_bytes
+
+    def test_public_bytes_openssh(self, backend):
+        key_bytes = load_vectors_from_file(
+            os.path.join("asymmetric", "PKCS8", "unenc-dsa-pkcs8.pub.pem"),
+            lambda pemfile: pemfile.read(), mode="rb"
+        )
+        key = serialization.load_pem_public_key(key_bytes, backend)
+
+        ssh_bytes = key.public_bytes(
+            serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH
+        )
+        assert ssh_bytes == (
+            b"ssh-dss AAAAB3NzaC1kc3MAAACBAKoJMMwUWCUiHK/6KKwolBlqJ4M95ewhJweR"
+            b"aJQgd3Si57I4sNNvGySZosJYUIPrAUMpJEGNhn+qIS3RBx1NzrJ4J5StOTzAik1K"
+            b"2n9o1ug5pfzTS05ALYLLioy0D+wxkRv5vTYLA0yqy0xelHmSVzyekAmcGw8FlAyr"
+            b"5dLeSaFnAAAAFQCtwOhps28KwBOmgf301ImdaYIEUQAAAIEAjGtFia+lOk0QSL/D"
+            b"RtHzhsp1UhzPct2qJRKGiA7hMgH/SIkLv8M9ebrK7HHnp3hQe9XxpmQi45QVvgPn"
+            b"EUG6Mk9bkxMZKRgsiKn6QGKDYGbOvnS1xmkMfRARBsJAq369VOTjMB/Qhs5q2ski"
+            b"+ycTorCIfLoTubxozlz/8kHNMkYAAACAKyYOqX3GoSrpMsZA5989j/BKigWgMk+N"
+            b"Xxsj8V+hcP8/QgYRJO/yWGyxG0moLc3BuQ/GqE+xAQnLZ9tdLalxrq8Xvl43KEVj"
+            b"5MZNnl/ISAJYsxnw3inVTYNQcNnih5FNd9+BSR9EI7YtqYTrP0XrKin86l2uUlrG"
+            b"q2vM4Ev99bY="
+        )
 
     def test_public_bytes_invalid_encoding(self, backend):
         key = DSA_KEY_2048.private_key(backend).public_key()
